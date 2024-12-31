@@ -3,11 +3,12 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define TT_SIZE 16777216
+#define TT_SIZE 13466917 
 #define ALPHA -999999
 #define BETA 999999
 
-int MAX_DEPTH = 13;
+int MAX_DEPTH = 15;
+int TT_ENABLE = 1;
 
 #include "typedefs.h"
 #include "boardmethods.h"
@@ -35,6 +36,9 @@ void main(int argc, char **argv) {
     if (strcmp(argv[i],"--ai-p2") == 0) {
       ai_p2 = 1;
     }
+    if (strcmp(argv[i],"--tt-disable") == 0) {
+      TT_ENABLE = 0;
+    }
     if (strcmp(argv[i],"--depth") == 0) {
       MAX_DEPTH = atoi(argv[i+1]);
     }
@@ -53,6 +57,10 @@ void main(int argc, char **argv) {
   uint64_t check_row;
   printf("\e[1;1H\e[2J");
   printf("CONNECT 4\n\n");
+
+  if (debug) {
+    printf("%s%i%s","Hashtable is ", (sizeof(transpositionTable_p1.nodeArray) * TT_SIZE) / 1024, " kB long\n");
+  }
   
   while (winner == 0) {
 
@@ -86,6 +94,7 @@ void main(int argc, char **argv) {
 
 
     printf(columnOut);
+    printf("12345678\n");
     printf("\n\n");
 
     winner = getWinner(ptr);
@@ -145,9 +154,14 @@ void main(int argc, char **argv) {
       float p_table_usage = transpositionTable_p2.inserted_values/TT_SIZE;
       
       printf("%s%i%s", "Searched ", nodes, " nodes\n");
-      printf("%s%i%s", "Eval: ", eval, "\n");
-      printf("%s%0.0f%s", "p_table occupancy: ",p_table_usage,"%\n");
+      if (TT_ENABLE) { printf("%s%0.0f%s", "p_table occupancy: ",p_table_usage,"%\n"); }
       printf("%0.0f%s", nodes / (msec/1000)/1000000, " mN/s\n");
+
+      if (eval > 0) {
+        printf("%s%i%s","\nP1 wins in ", eval-13, " move(s)\n");
+      } else if (eval < 0) {
+        printf("%s%i%s","\nP2 wins in ", eval+13, " move(s)\n");
+      }
 
     }
   }

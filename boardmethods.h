@@ -25,15 +25,15 @@ int getWinner(Playfield* p) {
       // Horizontal 4 in a row
       if (((uint64_t)1 << index) & ((uint64_t)0x1f1f1f1f1f1f1f1f)) {
 	mask = (((uint64_t)0xf) << index);
-	if ((p->p1_bitboard & mask) - mask == 0) {
+	if ((p->p1_bitboard & mask) == mask) {
 	  return P1;
 	}
       }
 
       // Vertical 4 in a row
-      if (((uint64_t)1 << index) & ((uint64_t)0xffffffffff) && index <= 36) {
+      if (((uint64_t)1 << index) & ((uint64_t)0xffffffffff)) {
 	mask = (((uint64_t)0x1010101) << index);
-	if ((p->p1_bitboard & mask) - mask == 0) {
+	if ((p->p1_bitboard & mask) == mask) {
 	  return P1;
 	}
       }
@@ -41,15 +41,15 @@ int getWinner(Playfield* p) {
       // Diagonal top-left to bottom-right
       if (((uint64_t)1 << index) & ((uint64_t)0x1f1f1f1f1f)) {
 	mask = (((uint64_t)0x8040201) << index);
-	if ((p->p1_bitboard & mask) - mask == 0) {
+	if ((p->p1_bitboard & mask) == mask) {
 	  return P1;
 	}
       }
 
       // Diagonal bottom-left to top-right
-      if (((uint64_t)1 << index) & ((uint64_t)0x10101018183878f8) && index <= 40 && index >= 3) {
+      if (((uint64_t)1 << index) & ((uint64_t)0xf8f8f8f8f8)) {
 	mask = (((uint64_t)0x1020408) << (index - 3));
-	if ((p->p1_bitboard & mask) - mask == 0) {
+	if ((p->p1_bitboard & mask) == mask) {
 	  return P1;
 	}
       }
@@ -63,31 +63,31 @@ int getWinner(Playfield* p) {
       // Horizontal 4 in a row
       if (((uint64_t)1 << index) & ((uint64_t)0x1f1f1f1f1f1f1f1f)) {
 	mask = (((uint64_t)0xf) << index);
-	if ((p->p2_bitboard & mask) - mask == 0) {
+	if ((p->p2_bitboard & mask) == mask) {
 	  return P2;
 	}
       }
 
       // Vertical 4 in a row
-      if (((uint64_t)1 << index) & ((uint64_t)0xffffffffff) && index <= 36) {
+      if (((uint64_t)1 << index) & ((uint64_t)0xffffffffff)) {
 	mask = (((uint64_t)0x1010101) << index);
-	if ((p->p2_bitboard & mask) - mask == 0) {
+	if ((p->p2_bitboard & mask) == mask) {
 	  return P2;
 	}
       }
 
       // Diagonal top-left to bottom-right
-      if (((uint64_t)1 << index) & ((uint64_t)0xf87838181c1e1f1f) && index <= 36) {
+      if (((uint64_t)1 << index) & ((uint64_t)0x1f1f1f1f1f)) {
 	mask = (((uint64_t)0x8040201) << index);
-	if ((p->p2_bitboard & mask) - mask == 0) {
+	if ((p->p2_bitboard & mask) == mask) {
 	  return P2;
 	}
       }
 
       // Diagonal bottom-left to top-right
-      if (((uint64_t)1 << index) & ((uint64_t)0x1e1c1818183878ff) && index <= 36 && index >= 3) {
+      if (((uint64_t)1 << index) & ((uint64_t)0xf8f8f8f8f8)) {
 	mask = (((uint64_t)0x1020408) << (index - 3));
-	if ((p->p2_bitboard & mask) - mask == 0) {
+	if ((p->p2_bitboard & mask) == mask) {
 	  return P2;
 	}
       }
@@ -123,15 +123,50 @@ int generateMove(Playfield* p, int column) {
 
 void generateLegalMoves(Playfield* p, int m[]) {
   p->occupancy = p->p1_bitboard | p->p2_bitboard;
+
   uint64_t columnMask;
-  for (int i = 0; i <= 7; i++) {
+  for (int i = 0; i < 8; i++) {
     columnMask = ((uint64_t)0x101010101010101) << i;
-    if (!(columnMask & p->occupancy - columnMask)) {
-      m[i] = 0;
-    } else {
-      m[i] = 1;
-    }
+
+    // Check if the column has space for a new piece
+    m[i] = (columnMask & ~(p->occupancy)) != 0; // If there's an empty space
   }
 }
+
+void orderMoves(Playfield* p, int m[]) {
+  int moves[8] = {0};
+  generateLegalMoves(p, moves);
+
+  int winningMoves[8];
+  int otherMoves[8];
+  int winningLength = 0;
+  int otherLength = 0;
+
+  for (int i = 0; i < 8; i++) {
+    if (moves[i] == 0) {
+      continue;
+    }
+
+    Playfield childPlayfield = *p;
+    generateMove(&childPlayfield, i);
+
+    if (getWinner(&childPlayfield)) {
+      winningMoves[winningLength++] = i;
+    } else {
+      otherMoves[otherLength++] = i;
+    }
+  }
+
+  // Copy winning moves first
+  for (int i = 0; i < winningLength; i++) {
+    m[i] = winningMoves[i];
+  }
+
+  // Copy other moves
+  for (int i = 0; i < otherLength; i++) {
+    m[winningLength + i] = otherMoves[i];
+  }
+}
+
 
 #endif
