@@ -14,16 +14,8 @@ struct Playfield_t {
 };
 typedef struct Playfield_t Playfield;
 
-struct Node_t {
-  uint64_t chk;
-  int depth;
-  int eval;
-  int move;
-};
-typedef struct Node_t Node;
-
 struct p_table_t {
-  Node* nodeArray;
+  uint16_t* nodeArray;
   int inserted_values;
 };
 typedef struct p_table_t p_table;

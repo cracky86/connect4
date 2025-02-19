@@ -3,11 +3,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define TT_SIZE 13466917 
+#define TT_SIZE 318316717
 #define ALPHA -999999
 #define BETA 999999
 
-int MAX_DEPTH = 15;
+int MAX_DEPTH = 17;
 int TT_ENABLE = 1;
 
 #include "typedefs.h"
@@ -22,9 +22,7 @@ void main(int argc, char **argv) {
   int ai_p2 = 0;
 
   p_table transpositionTable_p1;
-  init_hashtable(&transpositionTable_p1);
   p_table transpositionTable_p2;
-  init_hashtable(&transpositionTable_p2);
   
   for (int i=0;i<argc;++i) {
     if (strcmp(argv[i],"--debug") == 0) {
@@ -32,9 +30,11 @@ void main(int argc, char **argv) {
     }
     if (strcmp(argv[i],"--ai-p1") == 0) {
       ai_p1 = 1;
+      init_hashtable(&transpositionTable_p1);
     }
     if (strcmp(argv[i],"--ai-p2") == 0) {
       ai_p2 = 1;
+      init_hashtable(&transpositionTable_p2);
     }
     if (strcmp(argv[i],"--tt-disable") == 0) {
       TT_ENABLE = 0;
@@ -55,11 +55,10 @@ void main(int argc, char **argv) {
 
   char columnOut[256];
   uint64_t check_row;
-  printf("\e[1;1H\e[2J");
   printf("CONNECT 4\n\n");
 
   if (debug) {
-    printf("%s%i%s","Hashtable is ", (sizeof(transpositionTable_p1.nodeArray) * TT_SIZE) / 1024, " kB long\n");
+    printf("%s%i%s","Hashtable is ", (sizeof(uint16_t) * TT_SIZE) / 1024, " kB long\n");
   }
   
   while (winner == 0) {
@@ -81,7 +80,7 @@ void main(int argc, char **argv) {
         } else if (index & playfield.p2_bitboard) {
 	  c = 'O';
         } else {
-	  c = '-';
+	  c = '=';
         }
 
         columnOut[outIndex++] = c;
@@ -100,6 +99,10 @@ void main(int argc, char **argv) {
     winner = getWinner(ptr);
 
     if (winner != 0) {
+      break;
+    }
+    if (~(playfield.p1_bitboard | playfield.p2_bitboard)==0) {
+      printf("Draw\n");
       break;
     }
     
@@ -129,38 +132,32 @@ void main(int argc, char **argv) {
       }
     } else {
       int nodes = 0;
-      int move = rand()%7;
-
+      int move = 0;
       int eval = 0;
-      int legal_moves[8];
-      int *legal_p = legal_moves;
-      generateLegalMoves(ptr, legal_p);
       
-      while (!legal_moves[move]) {
-	move = rand()%7;
-      }
-
       clock_t start = clock(), diff;
+
+      float p_table_usage;
       if (playfield.turn == 1) {
 	eval = minimax(ptr, MAX_DEPTH, 1, &move, ALPHA, BETA, &nodes, &transpositionTable_p1);
+	p_table_usage = (float)transpositionTable_p1.inserted_values/TT_SIZE*100;
       } else {
 	eval = minimax(ptr, MAX_DEPTH, 0, &move, ALPHA, BETA, &nodes, &transpositionTable_p2);
+	p_table_usage = (float)transpositionTable_p2.inserted_values/TT_SIZE*100;
       }
-      
+
       generateMove(ptr, move);
       diff = clock() - start;
       float msec = diff * 1000 / CLOCKS_PER_SEC;
-
-      float p_table_usage = transpositionTable_p2.inserted_values/TT_SIZE;
       
-      printf("%s%i%s", "Searched ", nodes, " nodes\n");
+      printf("%s%i%s%0.0f%s", "Searched ", nodes, " nodes in ", msec," milliseconds\n");
       if (TT_ENABLE) { printf("%s%0.0f%s", "p_table occupancy: ",p_table_usage,"%\n"); }
       printf("%0.0f%s", nodes / (msec/1000)/1000000, " mN/s\n");
 
       if (eval > 0) {
-        printf("%s%i%s","\nP1 wins in ", eval-13, " move(s)\n");
+        printf("%s%i%s","\nP1 wins in ", MAX_DEPTH-eval, " move(s)\n");
       } else if (eval < 0) {
-        printf("%s%i%s","\nP2 wins in ", eval+13, " move(s)\n");
+        printf("%s%i%s","\nP2 wins in ", eval+MAX_DEPTH-2, " move(s)\n");
       }
 
     }
@@ -171,6 +168,5 @@ void main(int argc, char **argv) {
   } else {
     printf("Player 2 won!\n");
   }
-  
   
 }

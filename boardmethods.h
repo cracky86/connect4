@@ -20,7 +20,7 @@ int getWinner(Playfield* p) {
 
   if (p->turn == P2) {
     while (p1_bitboard) {
-      index = __builtin_ctzll(p1_bitboard);
+      index = __builtin_ia32_tzcnt_u64(p1_bitboard);
 
       // Horizontal 4 in a row
       if (((uint64_t)1 << index) & ((uint64_t)0x1f1f1f1f1f1f1f1f)) {
@@ -58,7 +58,7 @@ int getWinner(Playfield* p) {
     }
   } else {
     while (p2_bitboard) {
-      index = __builtin_ctzll(p2_bitboard);
+      index = __builtin_ia32_tzcnt_u64(p2_bitboard);
 
       // Horizontal 4 in a row
       if (((uint64_t)1 << index) & ((uint64_t)0x1f1f1f1f1f1f1f1f)) {
@@ -110,8 +110,8 @@ int generateMove(Playfield* p, int column) {
 
   // Find shift amount to set bit
   uint64_t move = columnMask & ~p->occupancy;
-  int temp = __builtin_clzll(move);
-  
+  int temp = __builtin_ia32_lzcnt_u64(move);
+
   move = 0x8000000000000000ULL >> temp;
 
   // Update correct players bitboard
@@ -129,13 +129,19 @@ void generateLegalMoves(Playfield* p, int m[]) {
     columnMask = ((uint64_t)0x101010101010101) << i;
 
     // Check if the column has space for a new piece
-    m[i] = (columnMask & ~(p->occupancy)) != 0; // If there's an empty space
+    m[i] = ((columnMask & p->occupancy) ^ columnMask) != 0; // If there's an empty space
   }
 }
 
+void swap (int *a, int *b) {
+  int temp = *a;
+  *a = *b;
+  *b = temp;
+}
+
 void orderMoves(Playfield* p, int m[]) {
-  int moves[8] = {0};
-  generateLegalMoves(p, moves);
+  int legal[8];
+  generateLegalMoves(p, legal);
 
   int winningMoves[8];
   int otherMoves[8];
@@ -143,12 +149,16 @@ void orderMoves(Playfield* p, int m[]) {
   int otherLength = 0;
 
   for (int i = 0; i < 8; i++) {
-    if (moves[i] == 0) {
+    if (legal[i] == 0) {
       continue;
     }
 
-    Playfield childPlayfield = *p;
-    generateMove(&childPlayfield, i);
+    Playfield childPlayfield;
+    memcpy(&childPlayfield, p, sizeof(Playfield));
+    
+    if (!generateMove(&childPlayfield, i)) {
+      continue;
+    }
 
     if (getWinner(&childPlayfield)) {
       winningMoves[winningLength++] = i;
@@ -156,15 +166,15 @@ void orderMoves(Playfield* p, int m[]) {
       otherMoves[otherLength++] = i;
     }
   }
-
+  
   // Copy winning moves first
   for (int i = 0; i < winningLength; i++) {
     m[i] = winningMoves[i];
   }
 
   // Copy other moves
-  for (int i = 0; i < otherLength; i++) {
-    m[winningLength + i] = otherMoves[i];
+  for (int i = winningLength; i < 8; i++) {
+    m[i] = otherMoves[i];
   }
 }
 

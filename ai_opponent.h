@@ -10,27 +10,33 @@
 int minimax(Playfield* p, int depth, int maximization, int* best_move, int alpha, int beta, int* nodes, p_table* tt) {
   (*nodes)++;
 
-  if (TT_ENABLE) {
-    uint64_t pos_hash = hashPosition(p);
-    int result[3];
-
-    if (get_from_hashtable(tt, pos_hash, result)) {
-      if (result[2] == depth) {
-	return result[1];
-      }
-    }
-  }
-
-  int winner = getWinner(p);
-  if (winner == 1) {
-    return (MAX_DEPTH - depth);
-  } else if (winner == 2) {
-    return -depth;
+  if (~(p->p1_bitboard | p->p2_bitboard)==0) {
+    return 0;
   }
 
   if (depth == 0) {
     return 0;
   }
+
+  
+  int winner = getWinner(p);
+  if (winner == 1) {
+    return depth+1;
+  } else if (winner == 2) {
+    return -depth-1;
+  }
+
+  if (TT_ENABLE) {
+    uint64_t pos_hash = hashPosition(p);
+    int result[2];
+
+    if (get_from_hashtable(tt, pos_hash, result)) {
+      if (result[1] == depth) {
+	return result[0];
+      }
+    }
+  }
+
 
   int moves[8] = {-1};
   orderMoves(p, moves);
@@ -39,35 +45,23 @@ int minimax(Playfield* p, int depth, int maximization, int* best_move, int alpha
     int best_eval = -1000000;
 
     for (int i = 0; i < 8; i++) {
-      if (moves[i] == -1) {
+      if (moves[i] > 7 || moves[i] < 0) {
 	break;
       }
 
       int move = moves[i];
-      
-      if (*best_move == -1) {
-	*best_move = i;
-      }
 
-      Playfield playfield_new;
-      memcpy(&playfield_new, p, sizeof(Playfield));
-      generateMove(&playfield_new, move);
-
-
+      Playfield childPlayfield;
+      memcpy(&childPlayfield, p, sizeof(Playfield));
+      generateMove(&childPlayfield, move);
 
       int eval;
+      uint64_t child_hash = hashPosition(&childPlayfield);
       if (TT_ENABLE) {
-	uint64_t child_hash = hashPosition(&playfield_new);
-	int child_result[3];
-	if (get_from_hashtable(tt, child_hash, child_result) && child_result[2] == depth) {
-	  eval = child_result[1];
-	  (*nodes)++;
-	} else {
-	  eval = minimax(&playfield_new, depth - 1, 0, best_move, alpha, beta, nodes, tt);
-	  add_to_hashtable(tt, child_hash, depth, eval, move);
-	}
+	eval = minimax(&childPlayfield, depth - 1, 0, best_move, alpha, beta, nodes, tt);
+	add_to_hashtable(tt, child_hash, depth - 1, eval, move);
       } else {
-	eval = minimax(&playfield_new, depth - 1, 0, best_move, alpha, beta, nodes, tt);
+	eval = minimax(&childPlayfield, depth - 1, 0, best_move, alpha, beta, nodes, tt);
       }
 
       if (eval > best_eval) {
@@ -79,6 +73,7 @@ int minimax(Playfield* p, int depth, int maximization, int* best_move, int alpha
 
       alpha = max(alpha, eval);
       if (beta <= alpha) {
+	add_to_hashtable(tt, child_hash, depth - 1, eval*2, move);
 	break;
       }
     }
@@ -87,33 +82,24 @@ int minimax(Playfield* p, int depth, int maximization, int* best_move, int alpha
     int best_eval = 1000000;
 
     for (int i = 0; i < 8; i++) {
-      if (moves[i] == -1) {
+      if (moves[i] > 7 || moves[i] < 0) {
 	break;
       }
 
       int move = moves[i];
 
-      Playfield playfield_new;
-      memcpy(&playfield_new, p, sizeof(Playfield));
-      generateMove(&playfield_new, move);
-
+      Playfield childPlayfield;
+      memcpy(&childPlayfield, p, sizeof(Playfield));
+      generateMove(&childPlayfield, move);
 
       int eval;
-
+      uint64_t child_hash = hashPosition(&childPlayfield);
       if (TT_ENABLE) {
-	uint64_t child_hash = hashPosition(&playfield_new);
-	int child_result[3];
-	if (get_from_hashtable(tt, child_hash, child_result) && child_result[2] == depth) {
-	  eval = child_result[1];
-	  (*nodes)++;
-	} else {
-	  eval = minimax(&playfield_new, depth - 1, 1, best_move, alpha, beta, nodes, tt);
-	  add_to_hashtable(tt, child_hash, depth, eval, move);
-	}
+	eval = minimax(&childPlayfield, depth - 1, 1, best_move, alpha, beta, nodes, tt);
+	add_to_hashtable(tt, child_hash, depth - 1, eval, move);
       } else {
-	eval = minimax(&playfield_new, depth - 1, 1, best_move, alpha, beta, nodes, tt);
+	eval = minimax(&childPlayfield, depth - 1, 1, best_move, alpha, beta, nodes, tt);
       }
-      
       
       if (eval < best_eval) {
 	best_eval = eval;
@@ -125,6 +111,7 @@ int minimax(Playfield* p, int depth, int maximization, int* best_move, int alpha
 
       beta = min(beta, eval);
       if (beta <= alpha) {
+	add_to_hashtable(tt, child_hash, depth - 1, eval*2, move);
 	break;
       }
     }
