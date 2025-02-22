@@ -31,7 +31,7 @@ int minimax(Playfield* p, int depth, int maximization, int* best_move, int alpha
     int result[2];
 
     if (get_from_hashtable(tt, pos_hash, result)) {
-      if (result[1] == depth) {
+      if (result[1] == p->halfTurns) {
 	return result[0];
       }
     }
@@ -59,7 +59,7 @@ int minimax(Playfield* p, int depth, int maximization, int* best_move, int alpha
       uint64_t child_hash = hashPosition(&childPlayfield);
       if (TT_ENABLE) {
 	eval = minimax(&childPlayfield, depth - 1, 0, best_move, alpha, beta, nodes, tt);
-	add_to_hashtable(tt, child_hash, depth - 1, eval, move);
+	add_to_hashtable(tt, child_hash, p->halfTurns+1, eval, move);
       } else {
 	eval = minimax(&childPlayfield, depth - 1, 0, best_move, alpha, beta, nodes, tt);
       }
@@ -73,7 +73,6 @@ int minimax(Playfield* p, int depth, int maximization, int* best_move, int alpha
 
       alpha = max(alpha, eval);
       if (beta <= alpha) {
-	add_to_hashtable(tt, child_hash, depth - 1, eval*2, move);
 	break;
       }
     }
@@ -96,7 +95,7 @@ int minimax(Playfield* p, int depth, int maximization, int* best_move, int alpha
       uint64_t child_hash = hashPosition(&childPlayfield);
       if (TT_ENABLE) {
 	eval = minimax(&childPlayfield, depth - 1, 1, best_move, alpha, beta, nodes, tt);
-	add_to_hashtable(tt, child_hash, depth - 1, eval, move);
+	add_to_hashtable(tt, child_hash, p->halfTurns+1, eval, move);
       } else {
 	eval = minimax(&childPlayfield, depth - 1, 1, best_move, alpha, beta, nodes, tt);
       }
@@ -111,7 +110,6 @@ int minimax(Playfield* p, int depth, int maximization, int* best_move, int alpha
 
       beta = min(beta, eval);
       if (beta <= alpha) {
-	add_to_hashtable(tt, child_hash, depth - 1, eval*2, move);
 	break;
       }
     }

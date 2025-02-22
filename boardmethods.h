@@ -9,6 +9,7 @@ void clearPlayfield(Playfield* p) {
   p->p1_bitboard = 0;
   p->p2_bitboard = 0;
   p->occupancy = 0;
+  p->halfTurns = 0;
 }
 
 int getWinner(Playfield* p) {
@@ -118,6 +119,7 @@ int generateMove(Playfield* p, int column) {
   uint64_t* currentPlayerBitboard = (p->turn == 1) ? &p->p1_bitboard : &p->p2_bitboard;
   *currentPlayerBitboard |= move;
   p->turn = 3 - p->turn;
+  p->halfTurns++;
   return 1;
 }
 
