@@ -12,6 +12,9 @@ struct Playfield_t {
   uint64_t p2_bitboard;
   uint64_t occupancy;
   int halfTurns;
+  int last_idx;
+  int stack[256];
+  int stack_length;
 };
 typedef struct Playfield_t Playfield;
 

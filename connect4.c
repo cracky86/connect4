@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define TT_SIZE 318316717
+#define TT_SIZE 1706079547
 #define ALPHA -999999
 #define BETA 999999
 
@@ -137,12 +137,15 @@ void main(int argc, char **argv) {
       
       clock_t start = clock(), diff;
 
+      Playfield p;
+      memcpy(&p, ptr, sizeof(Playfield));
+      
       float p_table_usage;
       if (playfield.turn == 1) {
-	eval = minimax(ptr, MAX_DEPTH, 1, &move, ALPHA, BETA, &nodes, &transpositionTable_p1);
+	eval = minimax(&p, MAX_DEPTH, 1, &move, ALPHA, BETA, &nodes, &transpositionTable_p1);
 	p_table_usage = (float)transpositionTable_p1.inserted_values/TT_SIZE*100;
       } else {
-	eval = minimax(ptr, MAX_DEPTH, 0, &move, ALPHA, BETA, &nodes, &transpositionTable_p2);
+	eval = minimax(&p, MAX_DEPTH, 0, &move, ALPHA, BETA, &nodes, &transpositionTable_p2);
 	p_table_usage = (float)transpositionTable_p2.inserted_values/TT_SIZE*100;
       }
 

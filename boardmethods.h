@@ -1,107 +1,74 @@
 #include <stdint.h>
 #include "typedefs.h"
 
+/*
+  boardmethods.h - provide methods on the playfield such as clearing, determining winner and generating legal moves
+*/
+
 #ifndef __HEADER_METHODS__
 #define __HEADER_METHODS__
 
+// Clear and initialize playfield
 void clearPlayfield(Playfield* p) {
   p->turn = P1;
   p->p1_bitboard = 0;
   p->p2_bitboard = 0;
   p->occupancy = 0;
   p->halfTurns = 0;
+  p->last_idx = 0;
+  p->stack_length = 0;
 }
 
+int isWin(uint64_t bitboard, int index) {
+  if (index == 65) {
+    return 0;
+  }
+  uint64_t offset_bitboard;
+  uint32_t top_row;
+
+  // Vertical 4 in a row
+  if (bitboard >> index == (uint64_t)0x1010101) {
+    return 1;
+  }
+
+  // Horizontal 4 in a row
+  top_row = (bitboard >> (index & ~7)) & 0xff;
+  if (((top_row & 0xf) == 0xf) || ((top_row & 0x1e) == 0x1e) || ((top_row & 0x3c) == 0x3c) || ((top_row & 0x78) == 0x78) || ((top_row & 0xf0) == 0xf0)) {
+    return 1;
+  }
+
+  // Diagonal 4 in a row
+  offset_bitboard = bitboard >> (index >> 3 << 3);
+  for (int i=0; i<5; i++) {
+    offset_bitboard = bitboard >> i*8;
+    if (((offset_bitboard & 0x8040201) == 0x8040201) || ((offset_bitboard & 0x10080402) == 0x10080402) || ((offset_bitboard & 0x20100804) == 0x20100804) || ((offset_bitboard & 0x40201008) == 0x40201008) || ((offset_bitboard & 0x80402010) == 0x80402010) || ((offset_bitboard & 0x1020408) == 0x1020408) || ((offset_bitboard & 0x2040810) == 0x2040810) || ((offset_bitboard & 0x4081020) == 0x4081020) || ((offset_bitboard & 0x8102040) == 0x8102040) || ((offset_bitboard & 0x10204080) == 0x10204080)) {
+      return 1;
+    }    
+  }
+  return 0;
+}
+
+// Given a playfield, determine the win state, returns 0 in non terminal states
 int getWinner(Playfield* p) {
-  uint64_t p1_bitboard = p->p1_bitboard;
-  uint64_t p2_bitboard = p->p2_bitboard;
-
-  int index;
-  uint64_t mask;
-
+  // Improve performance by only checking for the opposite player's win state
   if (p->turn == P2) {
-    while (p1_bitboard) {
-      index = __builtin_ia32_tzcnt_u64(p1_bitboard);
-
-      // Horizontal 4 in a row
-      if (((uint64_t)1 << index) & ((uint64_t)0x1f1f1f1f1f1f1f1f)) {
-	mask = (((uint64_t)0xf) << index);
-	if ((p->p1_bitboard & mask) == mask) {
-	  return P1;
-	}
-      }
-
-      // Vertical 4 in a row
-      if (((uint64_t)1 << index) & ((uint64_t)0xffffffffff)) {
-	mask = (((uint64_t)0x1010101) << index);
-	if ((p->p1_bitboard & mask) == mask) {
-	  return P1;
-	}
-      }
-
-      // Diagonal top-left to bottom-right
-      if (((uint64_t)1 << index) & ((uint64_t)0x1f1f1f1f1f)) {
-	mask = (((uint64_t)0x8040201) << index);
-	if ((p->p1_bitboard & mask) == mask) {
-	  return P1;
-	}
-      }
-
-      // Diagonal bottom-left to top-right
-      if (((uint64_t)1 << index) & ((uint64_t)0xf8f8f8f8f8)) {
-	mask = (((uint64_t)0x1020408) << (index - 3));
-	if ((p->p1_bitboard & mask) == mask) {
-	  return P1;
-	}
-      }
-    
-      p1_bitboard &= p1_bitboard - 1;
+    if (isWin(p->p1_bitboard, p->last_idx)) {
+      return 1;
     }
   } else {
-    while (p2_bitboard) {
-      index = __builtin_ia32_tzcnt_u64(p2_bitboard);
-
-      // Horizontal 4 in a row
-      if (((uint64_t)1 << index) & ((uint64_t)0x1f1f1f1f1f1f1f1f)) {
-	mask = (((uint64_t)0xf) << index);
-	if ((p->p2_bitboard & mask) == mask) {
-	  return P2;
-	}
-      }
-
-      // Vertical 4 in a row
-      if (((uint64_t)1 << index) & ((uint64_t)0xffffffffff)) {
-	mask = (((uint64_t)0x1010101) << index);
-	if ((p->p2_bitboard & mask) == mask) {
-	  return P2;
-	}
-      }
-
-      // Diagonal top-left to bottom-right
-      if (((uint64_t)1 << index) & ((uint64_t)0x1f1f1f1f1f)) {
-	mask = (((uint64_t)0x8040201) << index);
-	if ((p->p2_bitboard & mask) == mask) {
-	  return P2;
-	}
-      }
-
-      // Diagonal bottom-left to top-right
-      if (((uint64_t)1 << index) & ((uint64_t)0xf8f8f8f8f8)) {
-	mask = (((uint64_t)0x1020408) << (index - 3));
-	if ((p->p2_bitboard & mask) == mask) {
-	  return P2;
-	}
-      }
-    
-      p2_bitboard &= p2_bitboard - 1;
+    if (isWin(p->p2_bitboard, p->last_idx)) {
+      return 2;
     }
   }
   return 0;
 }
 
-
+// Generate a move, return 0 on failure (illegal move provided)
 int generateMove(Playfield* p, int column) {
+  // Create occupancy bitboard
   p->occupancy = p->p1_bitboard | p->p2_bitboard;
+
+  // Create column mask for determining move legality and making the move
   uint64_t columnMask = ((uint64_t)0x101010101010101) << column;
 
   // Return early if column full
@@ -111,72 +78,75 @@ int generateMove(Playfield* p, int column) {
 
   // Find shift amount to set bit
   uint64_t move = columnMask & ~p->occupancy;
-  int temp = __builtin_ia32_lzcnt_u64(move);
+  int temp = __builtin_clzll(move);
 
   move = 0x8000000000000000ULL >> temp;
 
-  // Update correct players bitboard
+  p->last_idx = __builtin_ctzll(move);
+
+  // Update playfield
   uint64_t* currentPlayerBitboard = (p->turn == 1) ? &p->p1_bitboard : &p->p2_bitboard;
   *currentPlayerBitboard |= move;
+  p->occupancy |= move;
   p->turn = 3 - p->turn;
   p->halfTurns++;
+  p->stack[p->stack_length] = temp;
+  p->stack_length++;
   return 1;
 }
 
-void generateLegalMoves(Playfield* p, int m[]) {
+void pop(Playfield* p) {
+  int index = p->stack[p->stack_length-1];
+  p->stack_length--;
+  p->turn = 3 - p->turn;
+  uint64_t move = 0x8000000000000000ULL >> index;
+
+  p->p1_bitboard &= ~move;
+  p->p2_bitboard &= ~move;
+
+  p->last_idx = 65;
   p->occupancy = p->p1_bitboard | p->p2_bitboard;
-
-  uint64_t columnMask;
-  for (int i = 0; i < 8; i++) {
-    columnMask = ((uint64_t)0x101010101010101) << i;
-
-    // Check if the column has space for a new piece
-    m[i] = ((columnMask & p->occupancy) ^ columnMask) != 0; // If there's an empty space
-  }
 }
 
-void swap (int *a, int *b) {
-  int temp = *a;
-  *a = *b;
-  *b = temp;
+// Generate an array of legal moves
+void generateLegalMoves(Playfield* p, int* m) {
+  *m = p->occupancy & 0xff;
 }
 
-void orderMoves(Playfield* p, int m[]) {
-  int legal[8];
-  generateLegalMoves(p, legal);
+// Order column indices, with winning moves at the beginning of the array
+void orderMoves(Playfield* p, uint64_t* m) {
+  int legal;
+  generateLegalMoves(p, &legal);
 
-  int winningMoves[8];
-  int otherMoves[8];
+  uint64_t winningMoves[8];
+  uint64_t otherMoves[8];
   int winningLength = 0;
   int otherLength = 0;
 
   for (int i = 0; i < 8; i++) {
-    if (legal[i] == 0) {
+    if (legal & (1<<i)) {
       continue;
     }
-
-    Playfield childPlayfield;
-    memcpy(&childPlayfield, p, sizeof(Playfield));
     
-    if (!generateMove(&childPlayfield, i)) {
+    if (!generateMove(p, i)) {
       continue;
     }
 
-    if (getWinner(&childPlayfield)) {
+    if (getWinner(p)) {
       winningMoves[winningLength++] = i;
     } else {
       otherMoves[otherLength++] = i;
     }
+
+    pop(p);
   }
   
-  // Copy winning moves first
-  for (int i = 0; i < winningLength; i++) {
-    m[i] = winningMoves[i];
-  }
-
-  // Copy other moves
-  for (int i = winningLength; i < 8; i++) {
-    m[i] = otherMoves[i];
+  for (int i = 0; i < winningLength+otherLength; i++) {
+    if (i < winningLength) {
+      *m |= (uint64_t)(winningMoves[i] & 0xff) << i*8;
+    } else {
+      *m |= (uint64_t)(otherMoves[i] & 0xff) << i*8;
+    }
   }
 }
 

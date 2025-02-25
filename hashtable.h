@@ -16,49 +16,43 @@ uint64_t hashPosition(Playfield* p) {
   return hash;
 }
 
-void pack(uint16_t* node, int eval, int depth) {
-  *node = (signed char)eval << 8;
-  *node |= (unsigned char)depth;
+void pack(uint16_t* node, int flag, int eval, int depth) {
+  *node = 0;
+  *node |= (flag & 0x03) << 14;
+  *node |= ((unsigned char)depth & 0x7F) << 7;
+  *node |= ((signed char)eval & 0x7F);
 }
 
-void unpack(uint16_t node, int* eval, int* depth) {
-  *eval = (node >> 8) & 0xff;
-  *depth = node & 0xff;
-  if (*eval > 127) { *eval -= 256; }
+void unpack(uint16_t node, int* flag, int* eval, int* depth) {
+  *flag = (node >> 14) & 0x03; 
+  *depth = (node >> 7) & 0x7f;
+  *eval = node & 0x7f;
+  if (*eval > 63) { *eval -= 128; }
 }
 
-void add_to_hashtable(p_table* tt, uint64_t hash, int depth, int eval, int move) {
-  if (depth == 0) {
-    return;
-  }
+void add_to_hashtable(p_table* tt, uint64_t hash, int depth, int eval, int flag) {
   uint64_t index = hash % TT_SIZE;
   uint16_t *ptr = &tt->nodeArray[index];
 
-  int e; int d;
-  
-  unpack(*ptr, &e, &d);
-  
   if (*ptr == 0) {
     tt->inserted_values++;
   }
-  if (depth > d || *ptr == 0) {
-    pack(ptr, eval, depth);
-  }
+  pack(ptr, flag, eval, depth);
 }
 
 int get_from_hashtable(p_table* tt, uint64_t hash, int result[]) {
   uint64_t index = hash % TT_SIZE;
   uint16_t *ptr = &tt->nodeArray[index];
   
-  int eval; int depth;
+  int flag; int eval; int depth;
   
-  unpack(*ptr, &eval, &depth);
+  unpack(*ptr, &flag, &eval, &depth);
+  //printf("%i\n",eval);
   
   if (*ptr) {
     result[0] = eval;
     result[1] = depth;
-    *ptr = 0;
-    tt->inserted_values--;
+    result[2] = flag;
     return 1;
   }
   return 0;
