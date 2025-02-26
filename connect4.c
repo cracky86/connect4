@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define TT_SIZE 1706079547
+#define TT_SIZE 168341713
 #define ALPHA -999999
 #define BETA 999999
 
@@ -29,12 +29,12 @@ void main(int argc, char **argv) {
       debug = 1;
     }
     if (strcmp(argv[i],"--ai-p1") == 0) {
-      ai_p1 = 1;
       init_hashtable(&transpositionTable_p1);
+      ai_p1 = 1;
     }
     if (strcmp(argv[i],"--ai-p2") == 0) {
-      ai_p2 = 1;
       init_hashtable(&transpositionTable_p2);
+      ai_p2 = 1;
     }
     if (strcmp(argv[i],"--tt-disable") == 0) {
       TT_ENABLE = 0;

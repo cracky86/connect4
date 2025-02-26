@@ -60,6 +60,7 @@ int getWinner(Playfield* p) {
       return 2;
     }
   }
+  
   return 0;
 }
 

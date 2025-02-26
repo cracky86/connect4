@@ -51,22 +51,17 @@ int minimax(Playfield* p, int depth, int maximization, int* best_move, int alpha
 
 
   uint64_t moves = 0;
-  int legal_moves;
-
-  generateLegalMoves(p, &legal_moves);
   orderMoves(p, &moves);
 
   if (maximization) {
     int best_eval = -1000000;
 
     for (int i = 0; i < 8; i++) {
-      if (1ULL << ((moves >> i*8) & 0xff) & legal_moves) {
-	continue;
-      }
-
       int move = (moves >> i*8) & 0xff;
 
-      generateMove(p, move);
+      if (generateMove(p, move) == 0) {
+	continue;
+      }
 
       int eval;
       eval = minimax(p, depth - 1, 0, best_move, alpha, beta, nodes, tt);
@@ -102,13 +97,11 @@ int minimax(Playfield* p, int depth, int maximization, int* best_move, int alpha
     int best_eval = 1000000;
 
     for (int i = 0; i < 8; i++) {
-      if (1ULL << ((moves >> i*8) & 0xff) & legal_moves) {
-	continue;
-      }
-
       int move = (moves >> i*8) & 0xff;
 
-      generateMove(p, move);
+      if (generateMove(p, move) == 0) {
+	continue;
+      }
 
       int eval;      
       eval = minimax(p, depth - 1, 1, best_move, alpha, beta, nodes, tt);
