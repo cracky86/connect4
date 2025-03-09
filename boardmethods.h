@@ -68,10 +68,10 @@ int generateMove(Playfield* p, int column) {
   p->occupancy = p->p1_bitboard | p->p2_bitboard;
 
   // Create column mask for determining move legality and making the move
-  uint64_t columnMask = ((uint64_t)0x101010101010101) << column;
+  uint64_t columnMask = ((uint64_t)0x101010101010101 << ((8-HEIGHT) * 8)) << column;
 
   // Return early if column full
-  if (!(columnMask & p->occupancy - columnMask)) {
+  if (!(columnMask & p->occupancy - columnMask) || column >= WIDTH) {
     return 0;
   }
 
@@ -110,7 +110,7 @@ void pop(Playfield* p) {
 
 // Generate an array of legal moves
 void generateLegalMoves(Playfield* p, int* m) {
-  *m = p->occupancy & 0xff;
+  *m = p->occupancy & (0xff << (8-HEIGHT * 8));
 }
 
 // Order column indices, with winning moves at the beginning of the array

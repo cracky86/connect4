@@ -10,6 +10,9 @@
 int MAX_DEPTH = 17;
 int TT_ENABLE = 1;
 
+int WIDTH = 8;
+int HEIGHT = 8;
+
 #include "typedefs.h"
 #include "boardmethods.h"
 #include "hashtable.h"
@@ -45,6 +48,12 @@ void main(int argc, char **argv) {
     if (strcmp(argv[i],"--depth") == 0) {
       MAX_DEPTH = atoi(argv[i+1]);
     }
+    if (strcmp(argv[i],"--width") == 0) {
+      WIDTH = atoi(argv[i+1]);
+    }
+    if (strcmp(argv[i],"--height") == 0) {
+      HEIGHT = atoi(argv[i+1]);
+    }
     if (strcmp(argv[i],"--mcts") == 0) {
       method = 0;
     }
@@ -79,8 +88,8 @@ void main(int argc, char **argv) {
     int outIndex = 0;
     memset(columnOut, 0, 256);
 
-    for (int row = 0; row < 8; row++) {
-      for (int col = 0; col < 8; col++) {
+    for (int row = 8-HEIGHT; row < 8; row++) {
+      for (int col = 0; col < WIDTH; col++) {
         uint64_t index = 0x1ULL << (row * 8 + col);
         char c;
         if (index & playfield.p1_bitboard) {
