@@ -17,9 +17,12 @@ int TT_ENABLE = 1;
 
 void main(int argc, char **argv) {
 
+  srand(time(0));
+
   int debug = 0;
   int ai_p1 = 0;
   int ai_p2 = 0;
+  int method = 1;
 
   p_table transpositionTable_p1;
   p_table transpositionTable_p2;
@@ -42,6 +45,10 @@ void main(int argc, char **argv) {
     if (strcmp(argv[i],"--depth") == 0) {
       MAX_DEPTH = atoi(argv[i+1]);
     }
+    if (strcmp(argv[i],"--mcts") == 0) {
+      method = 0;
+    }
+    
   }
   
   Playfield playfield;
@@ -66,6 +73,7 @@ void main(int argc, char **argv) {
     if (debug) {
       printf("%s%llu%s","P1 bitboard: ",playfield.p1_bitboard,"\n");
       printf("%s%llu%s","P2 bitboard: ",playfield.p2_bitboard,"\n");
+      printf("%s%i%s", "Last move index: ", playfield.last_idx, "\n");
     }
     
     int outIndex = 0;
@@ -142,10 +150,18 @@ void main(int argc, char **argv) {
       
       float p_table_usage;
       if (playfield.turn == 1) {
-	eval = minimax(&p, MAX_DEPTH, 1, &move, ALPHA, BETA, &nodes, &transpositionTable_p1);
+	if (method) {
+	  eval = minimax(&p, MAX_DEPTH, 1, &move, ALPHA, BETA, &nodes, &transpositionTable_p1);
+	} else {
+	  eval = mcts(&p, MAX_DEPTH, 40, 1, &move, &nodes, &transpositionTable_p1);
+	}
 	p_table_usage = (float)transpositionTable_p1.inserted_values/TT_SIZE*100;
       } else {
-	eval = minimax(&p, MAX_DEPTH, 0, &move, ALPHA, BETA, &nodes, &transpositionTable_p2);
+	if (method) {
+	  eval = minimax(&p, MAX_DEPTH, 0, &move, ALPHA, BETA, &nodes, &transpositionTable_p2);
+	} else {
+	  eval = mcts(&p, MAX_DEPTH, 40, -1, &move, &nodes, &transpositionTable_p2);
+	}
 	p_table_usage = (float)transpositionTable_p2.inserted_values/TT_SIZE*100;
       }
 
