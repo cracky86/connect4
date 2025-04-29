@@ -20,7 +20,7 @@ void clearPlayfield(Playfield* p) {
 }
 
 int isWin(uint64_t bitboard, int index) {
-  uint64_t offset_bitboard;
+  uint64_t diagonal_bitboard;
   uint32_t top_row;
 
   // Vertical 4 in a row
@@ -34,14 +34,22 @@ int isWin(uint64_t bitboard, int index) {
     return 1;
   }
 
-  // Diagonal 4 in a row
-  offset_bitboard = bitboard >> (index >> 3 << 3);
-  for (int i=0; i<5; i++) {
-    offset_bitboard = bitboard >> i*8;
-    if (((offset_bitboard & 0x8040201) == 0x8040201) || ((offset_bitboard & 0x10080402) == 0x10080402) || ((offset_bitboard & 0x20100804) == 0x20100804) || ((offset_bitboard & 0x40201008) == 0x40201008) || ((offset_bitboard & 0x80402010) == 0x80402010) || ((offset_bitboard & 0x1020408) == 0x1020408) || ((offset_bitboard & 0x2040810) == 0x2040810) || ((offset_bitboard & 0x4081020) == 0x4081020) || ((offset_bitboard & 0x8102040) == 0x8102040) || ((offset_bitboard & 0x10204080) == 0x10204080)) {
-      return 1;
-    }    
+  diagonal_bitboard = (bitboard >> 9) & (bitboard & 0x7f7f7f7f7f7f7f7f);
+  diagonal_bitboard = (diagonal_bitboard >> 9) & diagonal_bitboard;
+  diagonal_bitboard = (diagonal_bitboard >> 9) & diagonal_bitboard;
+
+  if (diagonal_bitboard) {
+    return 1;
   }
+
+  diagonal_bitboard = (bitboard >> 7) & (bitboard & 0xfefefefefefefefe);
+  diagonal_bitboard = (diagonal_bitboard >> 7) & diagonal_bitboard;
+  diagonal_bitboard = (diagonal_bitboard >> 7) & diagonal_bitboard;
+
+  if (diagonal_bitboard) {
+    return 1;
+  }
+  
   return 0;
 }
 
